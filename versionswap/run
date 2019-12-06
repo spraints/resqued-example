@@ -8,7 +8,7 @@ set -o nounset
 cd "$(dirname "$0")"
 
 main() {
-  rm -rf work
+  #rm -rf work
   mkdir -p work
 
   trap shutdown EXIT
@@ -16,11 +16,20 @@ main() {
   local start_cmd=start
   local version
   for version; do
-    install_resqued "$version"
-    $start_cmd
-    push_job
-    show_processes
-    start_cmd=restart
+    case "$version" in
+      0.*)
+        install_resqued "$version"
+        $start_cmd
+        push_job
+        show_processes
+        start_cmd=restart
+        ;;
+      *)
+        echo "==> Sleeping $version"
+        sleep "$version"
+        show_processes
+        ;;
+    esac
   done
 }
 
@@ -51,20 +60,25 @@ shutdown() {
     echo "==> Stopping resqued"
     kill -QUIT "$(cat work/resqued.pid)" || true
     rm -f work/resqued.pid
-    show_processes
-    sleep 5
+    sleep 1
     show_processes
   fi
 }
 
 push_job() {
-  (cd work && bundle exec ruby ../../basic/push.rb 4)
+  echo "==> Pushing a 10s job [$(date)]"
+  (cd work && bundle exec ruby ../../basic/push.rb 8)
   sleep 1
 }
 
 show_processes() {
   echo "==> Processes"
-  ps axo pid,ppid,etime,args | grep [r]esque || true
+  date
+  local psargs=
+  if [ "$(uname -s)" = "Linux" ]; then
+    psargs=-H
+  fi
+  ps axo pid,ppid,etime,args $psargs | grep [r]esque || true
 }
 
 main "$@"
