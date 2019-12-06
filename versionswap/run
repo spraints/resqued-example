@@ -13,11 +13,18 @@ ROOT="$(cd "$(dirname "$0")"; pwd -P)"
 WORK="${ROOT}/work"
 GEMFILE="${WORK}/Gemfile"
 PIDFILE="${WORK}/resqued.pid"
+LOGFILE="${ROOT}/log/resqued.log"
 CONFIG="${ROOT}/../basic/config.rb"
 PUSH="${ROOT}/../basic/push.rb"
 
 main() {
   mkdir -p "${WORK}"
+
+  if [ -e "${LOGFILE}" ]; then
+    mv "${LOGFILE}" "${LOGFILE}.1"
+  else
+    mkdir -p "${ROOT}/log"
+  fi
 
   trap shutdown EXIT
 
@@ -79,7 +86,7 @@ install_resqued() {
 
 start() {
   echo "==> Starting resqued"
-  "${WORK}/bin/resqued" --daemonize --pidfile "${PIDFILE}" "${CONFIG}"
+  "${WORK}/bin/resqued" --daemonize --pidfile "${PIDFILE}" --logfile "${LOGFILE}" "${CONFIG}"
   sleep 1
 }
 
