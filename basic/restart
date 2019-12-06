@@ -1,0 +1,13 @@
+#!/bin/bash
+
+case "$(basename $0)" in
+  restart)
+    sig=HUP ;;
+  *)
+    sig=QUIT ;;
+esac
+
+test -e resqued.pid || exit 0
+pid=$(cat resqued.pid)
+set -x
+exec kill -$sig $pid
