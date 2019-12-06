@@ -1,0 +1,70 @@
+#!/bin/bash
+#/ Usage: run VERSION...
+#/ Specify at least two versions.
+
+set -e
+set -o nounset
+
+cd "$(dirname "$0")"
+
+main() {
+  rm -rf work
+  mkdir -p work
+
+  trap shutdown EXIT
+
+  local start_cmd=start
+  local version
+  for version; do
+    install_resqued "$version"
+    $start_cmd
+    push_job
+    show_processes
+    start_cmd=restart
+  done
+}
+
+install_resqued() {
+  local version="$1"
+  echo "==> Installing resqued $version"
+  cat > work/Gemfile <<EOF
+source "https://rubygems.org"
+gem "resqued", "${version}"
+EOF
+  (cd work && bundle --path .bundle --binstubs bin --quiet)
+}
+
+start() {
+  echo "==> Starting resqued"
+  work/bin/resqued --daemonize --pidfile work/resqued.pid ../basic/config.rb
+  sleep 1
+}
+
+restart() {
+  echo "==> Restarting resqued"
+  kill -HUP "$(cat work/resqued.pid)"
+  sleep 1
+}
+
+shutdown() {
+  if [ -e work/resqued.pid ]; then
+    echo "==> Stopping resqued"
+    kill -QUIT "$(cat work/resqued.pid)" || true
+    rm -f work/resqued.pid
+    show_processes
+    sleep 5
+    show_processes
+  fi
+}
+
+push_job() {
+  (cd work && bundle exec ruby ../../basic/push.rb 4)
+  sleep 1
+}
+
+show_processes() {
+  echo "==> Processes"
+  ps axo pid,ppid,etime,args | grep [r]esque || true
+}
+
+main "$@"
