@@ -17,6 +17,8 @@ LOGFILE="${ROOT}/log/resqued.log"
 CONFIG="${ROOT}/../basic/config.rb"
 PUSH="${ROOT}/../basic/push.rb"
 
+start_args=
+
 main() {
   mkdir -p "${WORK}"
 
@@ -56,6 +58,23 @@ main() {
         start_cmd=restart
         ;;
 
+      --again)
+        if [ $start_cmd = start ]; then
+          echo "$1: not allowed as first command"
+          exit 1
+        fi
+        echo "==> Use same version of resqued"
+        shift
+        $start_cmd
+        push_job
+        show_processes
+        ;;
+
+      --no-exec-on-hup|--fast-exit)
+        start_args="$start_args $1"
+        shift
+        ;;
+
       *)
         echo "$1: unrecognized arg"
         exit 1
@@ -86,14 +105,16 @@ install_resqued() {
 
 start() {
   echo "==> Starting resqued"
-  "${WORK}/bin/resqued" --daemonize --pidfile "${PIDFILE}" --logfile "${LOGFILE}" "${CONFIG}"
-  sleep 1
+  "${WORK}/bin/resqued" --daemonize --pidfile "${PIDFILE}" --logfile "${LOGFILE}" $start_args "${CONFIG}"
+  sleep 2
+  kill -0 "$(cat "${PIDFILE}")"
 }
 
 restart() {
   echo "==> Restarting resqued"
   kill -HUP "$(cat "${PIDFILE}")"
   sleep 1
+  kill -0 "$(cat "${PIDFILE}")"
 }
 
 shutdown() {
