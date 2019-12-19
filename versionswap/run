@@ -112,7 +112,7 @@ install_resqued() {
         ;;
     esac
   ) > "${GEMFILE}"
-  (cd "${WORK}" && (bundle check >&/dev/null || time bundle --path .bundle --binstubs bin))
+  (cd "${WORK}" && (bundle check >&/dev/null || time bundle --path .bundle --binstubs bin --quiet))
 }
 
 start() {
