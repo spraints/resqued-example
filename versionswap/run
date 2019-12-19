@@ -30,32 +30,40 @@ main() {
 
   trap shutdown EXIT
 
+  warmup_script=true
+  run_script=true
+
   local start_cmd=start
   local version
   while [ $# -gt 0 ]; do
     case "$1" in
       --sleep)
-        echo "==> Sleeping $2"
-        sleep "$2"
+        run_script="$run_script;
+          echo ==> Sleeping $2;
+          sleep $2"
         shift; shift
         ;;
 
       --git|--path)
-        install_resqued "$1" "$2"
-        shift; shift
-        $start_cmd
-        push_job
-        show_processes
+        warmup_script="$warmup_script; install_resqued $1 $2"
+        run_script="$run_script;
+          install_resqued $1 $2;
+          $start_cmd;
+          push_job;
+          show_processes"
         start_cmd=restart
+        shift; shift
         ;;
 
       0.*)
-        install_resqued --gem "$1"
-        shift
-        $start_cmd
-        push_job
-        show_processes
+        warmup_script="$warmup_script; install_resqued --gem $1"
+        run_script="$run_script;
+          install_resqued --gem $1;
+          $start_cmd;
+          push_job;
+          show_processes"
         start_cmd=restart
+        shift
         ;;
 
       --again)
@@ -63,11 +71,12 @@ main() {
           echo "$1: not allowed as first command"
           exit 1
         fi
-        echo "==> Use same version of resqued"
+        run_script="$run_script;
+          echo '==> Use same version of resqued';
+          $start_cmd;
+          push_job;
+          show_processes"
         shift
-        $start_cmd
-        push_job
-        show_processes
         ;;
 
       --no-exec-on-hup|--fast-exit)
@@ -81,6 +90,9 @@ main() {
         ;;
     esac
   done
+
+  eval "$warmup_script"
+  eval "$run_script"
 }
 
 install_resqued() {
@@ -100,7 +112,7 @@ install_resqued() {
         ;;
     esac
   ) > "${GEMFILE}"
-  (cd "${WORK}" && bundle --path .bundle --binstubs bin --quiet)
+  (cd "${WORK}" && (bundle check >&/dev/null || time bundle --path .bundle --binstubs bin))
 }
 
 start() {
