@@ -79,6 +79,22 @@ main() {
         shift
         ;;
 
+      --reexec)
+        if [ $start_cmd = start ]; then
+          echo "$1: not allowed as first command"
+          exit 1
+        fi
+        run_script="$run_script;
+        reexec_master;
+        show_processes"
+        shift
+        ;;
+
+      --logrotate)
+        run_script="$run_script; rotate_log"
+        shift
+        ;;
+
       --no-exec-on-hup|--fast-exit)
         start_args="$start_args $1"
         shift
@@ -126,6 +142,21 @@ restart() {
   echo "==> Restarting resqued"
   kill -HUP "$(cat "${PIDFILE}")"
   sleep 1
+  kill -0 "$(cat "${PIDFILE}")"
+}
+
+rotate_log() {
+  echo "==> Rotating log"
+  mv "${LOGFILE}" "${LOGFILE}.1"
+  restart
+  ls -l "${LOGFILE}" "${LOGFILE}.1"
+  lsof -nP "${LOGFILE}" "${LOGFILE}.1" || true
+}
+
+reexec_master() {
+  echo "==> Re-execing master with USR1"
+  kill -USR1 "$(cat "${PIDFILE}")"
+  sleep 0.5
   kill -0 "$(cat "${PIDFILE}")"
 }
 
