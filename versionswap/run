@@ -39,7 +39,7 @@ main() {
     case "$1" in
       --sleep)
         run_script="$run_script;
-          echo ==> Sleeping $2;
+          echo '==> Sleeping $2';
           sleep $2"
         shift; shift
         ;;
